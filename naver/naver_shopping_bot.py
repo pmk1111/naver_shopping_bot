@@ -15,20 +15,37 @@ options.add_experimental_option("detach", True)
 
 driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()), options=options)
 
+# 브라우저 창 최대화
+driver.maximize_window()
+
 # 상품명을 입력받으면 네이버 쇼핑 이동. 공백 또는 아무 값도 입력받지 않았느면 올바른 값을 입력받을 때 까지 반복
 while True:
     item_name = input("상품명을 입력하세요> ")
-    
+
     if item_name and item_name.strip() != '' :
-        driver.get("https://shopping.naver.com/home")
         break
 
+limit_arr = ["20", "40", "60", "80"]
+while True:
+    limit_per_page = input("페이지 당 상품 갯수> ")
+    
+    try:
+        if limit_per_page in limit_arr or limit_per_page == '':
+            driver.get("https://shopping.naver.com/home")
+            break
+        else:
+            print("유효하지 않은 값입니다. 다시 입력하세요.")
+    except ValueError:
+        print("숫자를 입력하세요.")
+
 # 3~5 사이의 난수 생성
-random_sec = random.uniform(2, 4)
-time.sleep(random_sec)
+random_sec = random.uniform(3, 5)
+driver.implicitly_wait(10)
 
 # 네이버 쇼핑은 브라우저 크기 별로 검색 영역을 나타내는 태그가 다른 방식으로 표시된다.
 # 셀레니움으로 브라우저를 열었을 때의 브라우저 넓이를 구한 다음, 그 값에 따라 다른 방식으로 검색 영역을 찾아준다.
+# 예제에서는 이미 셀레니움으로 브라우저 오픈 시Full Screen으로 열리도록 설정했지만, 
+# 이런 방법으로 웹 브라우저 크기 별로 컨트롤 할 수 있다는 걸 알려주기 위해 작성
 window_rect = driver.get_window_rect()
 width = window_rect['width']
 if width >= 1152:
@@ -40,7 +57,7 @@ if width >= 1152:
         search_input.send_keys(Keys.ENTER)
     except Exception as e:
         print("검색 영역을 찾지 못했습니다.(Full Size Browser)", e)
-else:
+else: # 브라우저 넓이가 1152px 미만일 경우
     try:
         search_input = driver.find_element(By.CSS_SELECTOR, "._combineHeader_expansion_search_inner_1VxB3")
         search_input.click()
@@ -52,3 +69,28 @@ else:
         print("검색 영역을 찾지 못했습니다.(span tag)", e)
 
 time.sleep(random_sec)
+
+# 네이버 쇼핑은 초기 실행 시 브라우저 넓이에 따라 검색 결과 ui가 결정된다
+# 넓이가 1152px 미만으로 한 다음 상품을 검색하면, 이후 브라우저 넓이를 늘려도 특정 태그가 표시되지 않으므로 
+# 처음부터 1152px 이상으로 브라우저 크기를 세팅한 다음 실행하는 것이 좋다.
+try:
+    limit = driver.find_elements(By.CSS_SELECTOR, 'div.subFilter_select_box__dX_vV')[1]
+    if limit:
+        limit.click()
+        driver.implicitly_wait(2)
+        try:
+            limit_cnt = driver.find_elements(By.CSS_SELECTOR, "div.subFilter_select_box__dX_vV.open ul li")
+            time.sleep(random_sec)
+
+            if limit_per_page == "20":
+                limit_cnt[0].click()
+            elif limit_per_page == "40" or limit_per_page.strip() == '':
+                limit_cnt[1].click()
+            elif limit_per_page == "60":
+                limit_cnt[2].click()
+            else:
+                limit_cnt[3].click()
+        except Exception as e:
+            print("페이지 당 상품 갯수 리스트를 찾지 못했습니다.", e)
+except Exception as e:
+    print("페이지 당 상품 갯수 div를 찾지 못했습니다.")
