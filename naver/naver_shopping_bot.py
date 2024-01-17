@@ -12,6 +12,8 @@ from selenium.webdriver.common.by import By
 import time
 # 임의의 난수 발생을 위해 사용하는 random 모듈
 import random
+# pandas 모듈 추가
+import pandas as pd
 
 options = ChromeOptions()
 # 작업이 완료되어도 브라우저 유지
@@ -106,6 +108,19 @@ last_height = driver.execute_script("return document.body.scrollHeight")
 
 time.sleep(2)
 
+# 상품 정보를 항목별로 담을 리스트
+product_title_list = []
+product_url_list = []
+product_price_list = []
+product_category_list = []
+
+# 각 리스트에 값을 저장하는 함수
+def add_list(product_title, product_url, product_price, product_category):
+    product_title_list.append(product_title)
+    product_url_list.append(product_url)
+    product_price_list.append(product_price)
+    product_category_list.append(product_category)
+
 # 스크롤 완료 후 => 현재 페이지의 상품 정보를 가져온 후 => 다음 페이지로 이동
 # 마지막 페이지인 경우 루프 중지
 while True:
@@ -128,38 +143,44 @@ while True:
     for item in items:
         try:
             product_info_grp = item.find_element(By.CSS_SELECTOR, ".product_info_area__xxCTi")
+
             product_title = product_info_grp.find_element(By.CSS_SELECTOR, "a").text
             product_url = product_info_grp.find_element(By.CSS_SELECTOR, "a").get_attribute("href")
             product_price = product_info_grp.find_element(By.CSS_SELECTOR, ".price_num__S2p_v em").text
             product_category_grp = product_info_grp.find_elements(By.CSS_SELECTOR, ".product_depth__I4SqY span")
-            # print("상품명: " + product_title)
-            # print("상품 판매 주소: ", product_url)
-            # print("상품 가격: ", product_price)
 
             product_category = ""
             for c in product_category_grp:
                 product_category += c.text
-            print("상품 카테고리: ", product_category)
+            add_list(product_title, product_url, product_price, product_category)
         except NoSuchElementException as e:
             try:
                 product_info_grp = item.find_element(By.CSS_SELECTOR, ".adProduct_info_area__dTSZf")
+
                 product_title = product_info_grp.find_element(By.CSS_SELECTOR, "a").text
                 product_url = product_info_grp.find_element(By.CSS_SELECTOR, "a").get_attribute("href")
                 product_price = product_info_grp.find_element(By.CSS_SELECTOR, ".price_num__S2p_v em").text
                 product_category_grp = product_info_grp.find_elements(By.CSS_SELECTOR, ".adProduct_depth__s_IUT span")
-                # print("상품명: " + product_title)
-                # print("상품 판매 주소: ", product_url)
-                # print("상품 가격: ", product_price)
 
                 product_category = ""
                 for c in product_category_grp:
                     product_category += c.text
-                print("상품 카테고리: ", product_category)
+                add_list(product_title, product_url, product_price, product_category)
             except NoSuchElementException as e:
                 print("상품 정보 영역을 찾는 데 문제가 발생했습니다.")
+
+
     try:
         next_page = driver.find_element(By.CSS_SELECTOR, ".pagination_next__pZuC6")
         next_page.click()
     except NoSuchElementException as e:
         print("마지막 페이지 입니다.")
         break  
+
+
+# dataframe으로 변환
+data = {"상품명": product_title_list, "판매주소": product_url_list, 
+        "가격": product_price_list, "상품분류": product_category_list}
+df = pd.DataFrame(data)
+
+df.to_csv("product_info.csv", encoding = "utf-8-sig")
